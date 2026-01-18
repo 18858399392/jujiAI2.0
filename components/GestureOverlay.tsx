@@ -10,6 +10,23 @@ interface GestureOverlayProps {
   isActive: boolean;
 }
 
+// 辅助函数：多源加载模型文件
+// 依次尝试 URL 列表，直到下载成功并返回 Blob URL
+const loadModelAsset = async (urls: string[]): Promise<string> => {
+  for (const url of urls) {
+    try {
+      console.log(`Trying to load model from: ${url}`);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Status ${response.status}`);
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    } catch (e) {
+      console.warn(`Failed to load from ${url}, trying next...`);
+    }
+  }
+  throw new Error("Failed to load model from all mirrors.");
+};
+
 export const GestureOverlay: React.FC<GestureOverlayProps> = ({ onPrev, onNext, onAction, onDownload, isActive }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -88,14 +105,43 @@ export const GestureOverlay: React.FC<GestureOverlayProps> = ({ onPrev, onNext, 
       setIsModelLoading(true);
 
       try {
+        // 1. WASM 引擎：保持使用 cdn.jsdelivr.net，它对 npm 包的支持比较稳定
+        // 如果这里也报错，可以尝试 'https://jsd.cdn.zzko.cn/npm/@mediapipe/tasks-vision@0.10.3/wasm'
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
         );
         
+        // 2. 模型文件：使用多源自动降级策略
+        // 优先尝试国内加速节点，其次 Google 官方，最后 JSDelivr 原源
+        
+        const FACE_MODEL_MIRRORS = [
+            // Mirror 1: China Accelerated JSDelivr
+            "https://jsd.cdn.zzko.cn/gh/google-ai-edge/mediapipe-samples@main/examples/face_landmarker/android/app/src/main/assets/face_landmarker.task",
+            // Mirror 2: Google Official (Float16)
+            "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            // Mirror 3: Standard JSDelivr (May 403)
+            "https://cdn.jsdelivr.net/gh/google-ai-edge/mediapipe-samples@main/examples/face_landmarker/android/app/src/main/assets/face_landmarker.task"
+        ];
+
+        const HAND_MODEL_MIRRORS = [
+            // Mirror 1: China Accelerated JSDelivr
+            "https://jsd.cdn.zzko.cn/gh/google-ai-edge/mediapipe-samples@main/examples/hand_landmarker/android/app/src/main/assets/hand_landmarker.task",
+            // Mirror 2: Google Official (Float16)
+            "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            // Mirror 3: Standard JSDelivr (May 403)
+            "https://cdn.jsdelivr.net/gh/google-ai-edge/mediapipe-samples@main/examples/hand_landmarker/android/app/src/main/assets/hand_landmarker.task"
+        ];
+
+        // 并行加载模型文件
+        const [faceModelBlobUrl, handModelBlobUrl] = await Promise.all([
+            loadModelAsset(FACE_MODEL_MIRRORS),
+            loadModelAsset(HAND_MODEL_MIRRORS)
+        ]);
+
         [faceLandmarker.current, handLandmarker.current] = await Promise.all([
           FaceLandmarker.createFromOptions(vision, {
             baseOptions: {
-              modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+              modelAssetPath: faceModelBlobUrl,
               delegate: "GPU"
             },
             outputFaceBlendshapes: true,
@@ -104,7 +150,7 @@ export const GestureOverlay: React.FC<GestureOverlayProps> = ({ onPrev, onNext, 
           }),
           HandLandmarker.createFromOptions(vision, {
             baseOptions: {
-              modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+              modelAssetPath: handModelBlobUrl,
               delegate: "GPU"
             },
             runningMode: "VIDEO",
@@ -134,7 +180,8 @@ export const GestureOverlay: React.FC<GestureOverlayProps> = ({ onPrev, onNext, 
         }
       } catch (err) {
         if (err instanceof Error && !err.message.includes('TensorFlow')) {
-            originalError("AI Init Error:", err);
+            originalError("AI Init Error (Network issue?):", err);
+            setStatus('NETWORK ERROR');
         }
         setIsModelLoading(false);
       }
