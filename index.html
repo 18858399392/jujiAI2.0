@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>juji (句己) - 沉浸式语录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Serif SC', serif;
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            /* Prevent pull-to-refresh on mobile */
+            overscroll-behavior: none;
+        }
+        .snap-container {
+            scroll-snap-type: y mandatory;
+            /* Use dvh for better mobile support (dynamic viewport height) */
+            height: 100vh;
+            height: 100dvh;
+            overflow-y: scroll;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            overscroll-behavior-y: contain;
+            /* 增加滚动平滑度，减少生硬感 */
+            scroll-behavior: smooth; 
+        }
+        .snap-container::-webkit-scrollbar {
+            display: none;
+        }
+        .snap-item {
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            /* Use dvh for better mobile support */
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+        }
+        /* MediaPipe Canvas Smoothing */
+        canvas {
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+        
+        /* Custom Utilities for Vertical Writing */
+        .writing-vertical-rl {
+            writing-mode: vertical-rl;
+            -webkit-writing-mode: vertical-rl;
+            -ms-writing-mode: tb-rl;
+        }
+        .text-orientation-upright {
+            text-orientation: upright;
+            -webkit-text-orientation: upright;
+        }
+
+        /* Sleek Custom Scrollbar */
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* --- Cinematic Animations --- */
+        
+        /* 缓慢推镜头效果 (Ken Burns) */
+        @keyframes ken-burns {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.15); }
+        }
+        .animate-ken-burns {
+            animation: ken-burns 25s linear forwards;
+        }
+
+        /* 文字模糊显影上浮 */
+        @keyframes blur-reveal-up {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+                filter: blur(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+                filter: blur(0);
+            }
+        }
+        .animate-blur-reveal {
+            animation: blur-reveal-up 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        /* 移动端文字显影 */
+        @keyframes blur-reveal-simple {
+            0% {
+                opacity: 0;
+                filter: blur(8px);
+            }
+            100% {
+                opacity: 1;
+                filter: blur(0);
+            }
+        }
+        .animate-blur-reveal-simple {
+             animation: blur-reveal-simple 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+    "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>
